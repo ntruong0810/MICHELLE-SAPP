@@ -211,6 +211,79 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
+@media (min-width: 701px) {
+  .planner-page--month {
+    height: 100dvh;
+  }
+
+  .planner-sheet--month {
+    display: flex;
+    height: calc(100dvh - 46px);
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .planner-content--month {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    padding-block: clamp(10px, 1.5vh, 16px);
+  }
+
+  .planner-content--month .calendar-heading {
+    margin-bottom: clamp(6px, 1vh, 10px);
+  }
+
+  .planner-content--month .calendar-kicker {
+    margin-bottom: 2px;
+    line-height: 1.1;
+  }
+
+  .planner-content--month .calendar-title {
+    font-size: clamp(1.6rem, min(2.7vw, 4.4vh), 2.3rem);
+    line-height: 1.05;
+  }
+
+  .planner-content--month .month-tools {
+    margin: 0 0 clamp(7px, 1vh, 10px);
+  }
+
+  .planner-content--month .month-jump select,
+  .planner-content--month .month-jump button {
+    min-height: 28px;
+  }
+
+  .planner-content--month .month-scroll {
+    min-height: 0;
+    flex: 1;
+    overflow-y: hidden;
+  }
+
+  .planner-content--month .month-calendar {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+  }
+
+  .planner-content--month .weekday-row {
+    flex: 0 0 auto;
+  }
+
+  .planner-content--month .weekday-label {
+    padding-bottom: clamp(5px, 0.7vh, 7px);
+  }
+
+  .planner-content--month .calendar-week {
+    min-height: 0;
+    flex: 1 1 0;
+  }
+
+  .planner-content--month .day-cell {
+    min-height: 0;
+  }
+}
+
 .month-scroll,
 .week-scroll {
   overflow-x: auto;

@@ -9,8 +9,8 @@ type PlannerShellProps = {
 
 export function PlannerShell({ activeView, monthHref, weekHref, children }: PlannerShellProps) {
   return (
-    <main className="planner-page">
-      <section className="planner-sheet" aria-label="Little Day Planner">
+    <main className={`planner-page planner-page--${activeView}`}>
+      <section className={`planner-sheet planner-sheet--${activeView}`} aria-label="Little Day Planner">
         <header className="planner-topbar">
           <Link className="planner-brand" href={monthHref}>
             <span className="planner-brand-mark" aria-hidden="true" />
@@ -26,7 +26,7 @@ export function PlannerShell({ activeView, monthHref, weekHref, children }: Plan
             </Link>
           </nav>
         </header>
-        <div className="planner-content">{children}</div>
+        <div className={`planner-content planner-content--${activeView}`}>{children}</div>
       </section>
     </main>
   );

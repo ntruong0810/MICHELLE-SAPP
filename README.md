@@ -1,6 +1,6 @@
 # Little Day Planner
 
-A warm, paper-inspired digital planner built with Next.js, TypeScript, and Tailwind CSS.
+A warm, paper-inspired digital planner built with the official Next.js App Router, React, TypeScript, and Tailwind CSS.
 
 Stage 1 includes:
 
@@ -31,7 +31,8 @@ Open `http://localhost:3000`.
 npm test
 npm run lint
 npm run build
-npm run test:render
 ```
 
 The Month grid and Week view use Sunday as the canonical first day, so every Month row opens the exact same seven dates in Week.
+
+Stage 1 has no database, authentication, alternate runtime, ORM, or deployment-specific infrastructure. Supabase persistence will be introduced separately in Stage 3.

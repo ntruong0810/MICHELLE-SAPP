@@ -1,7 +1,7 @@
-import { MonthPlanner } from "@/components/planner/month-planner";
-import { currentCalendarMonth } from "@/lib/calendar";
+import { currentCalendarMonth, monthPath } from "@/lib/calendar";
+import { redirect } from "next/navigation";
 
 export default function Home() {
   const { year, month } = currentCalendarMonth();
-  return <MonthPlanner year={year} month={month} />;
+  redirect(monthPath(year, month));
 }

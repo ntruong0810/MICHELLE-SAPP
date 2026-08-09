@@ -1,33 +1,27 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import "./globals.css";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const imageUrl = `${protocol}://${host}/og.png`;
-  const description = "A quiet, paper-inspired place for months, weeks, and little plans.";
+const description = "A quiet, paper-inspired place for months, weeks, and little plans.";
 
-  return {
-    title: {
-      default: "Little Day Planner",
-      template: "%s · Little Day Planner",
-    },
+export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  title: {
+    default: "Little Day Planner",
+    template: "%s · Little Day Planner",
+  },
+  description,
+  openGraph: {
+    title: "Little Day Planner",
     description,
-    openGraph: {
-      title: "Little Day Planner",
-      description,
-      images: [{ url: imageUrl, width: 1731, height: 909, alt: "Little Day Planner paper calendar" }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: "Little Day Planner",
-      description,
-      images: [imageUrl],
-    },
-  };
-}
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "Little Day Planner paper calendar" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Little Day Planner",
+    description,
+    images: ["/og.png"],
+  },
+};
 
 export default function RootLayout({
   children,
