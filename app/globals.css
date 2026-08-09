@@ -195,6 +195,10 @@ select:focus-visible {
   margin: -5px 0 20px;
 }
 
+.week-tools {
+  position: relative;
+}
+
 .planner-save-state {
   position: absolute;
   top: 50%;
@@ -869,6 +873,19 @@ select:focus-visible {
 
 .week-task-new {
   grid-template-columns: 11px minmax(0, 1fr);
+}
+
+.week-event-new,
+.week-task-new {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.week-event-new:hover,
+.week-event-new:focus-within,
+.week-task-new:hover,
+.week-task-new:focus-within {
+  opacity: 1;
 }
 
 .week-entry-mark {

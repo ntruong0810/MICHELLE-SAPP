@@ -51,13 +51,16 @@ type InlineDraft = { id: string; content: string };
 
 const MIN_EVENTS_PERCENT = 20;
 const MAX_EVENTS_PERCENT = 80;
+const DEFAULT_EVENTS_PERCENT = 58;
+const WEEK_DIVIDER_STORAGE_PREFIX = "little-day-planner:week-divider:";
 
 function clampEventsPercent(value: number) {
   return Math.min(MAX_EVENTS_PERCENT, Math.max(MIN_EVENTS_PERCENT, value));
 }
 
 export function WeekPlanner({ weekStart }: WeekPlannerProps) {
-  const [eventsPercent, setEventsPercent] = useState(58);
+  const [eventsPercent, setEventsPercent] = useState(DEFAULT_EVENTS_PERCENT);
+  const [dividerLoadedForWeek, setDividerLoadedForWeek] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [weeklyEvents, setWeeklyEvents] = useState<WeeklyOnlyEvent[]>([]);
@@ -84,6 +87,44 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
     "--week-events-track": `${eventsPercent}fr`,
     "--week-tasks-track": `${100 - eventsPercent}fr`,
   } as CSSProperties;
+
+  useEffect(() => {
+    const storageKey = `${WEEK_DIVIDER_STORAGE_PREFIX}${weekStart}`;
+    let cancelled = false;
+    let nextPercent = DEFAULT_EVENTS_PERCENT;
+
+    try {
+      const storedPercent = Number(window.localStorage.getItem(storageKey));
+      if (Number.isFinite(storedPercent) && storedPercent > 0) {
+        nextPercent = clampEventsPercent(storedPercent);
+      }
+    } catch {
+      // Keep the default split when browser storage is unavailable.
+    }
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setEventsPercent(nextPercent);
+      setDividerLoadedForWeek(weekStart);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [weekStart]);
+
+  useEffect(() => {
+    if (dividerLoadedForWeek !== weekStart) return;
+
+    try {
+      window.localStorage.setItem(
+        `${WEEK_DIVIDER_STORAGE_PREFIX}${weekStart}`,
+        String(eventsPercent),
+      );
+    } catch {
+      // Resizing should continue to work even when storage is unavailable.
+    }
+  }, [dividerLoadedForWeek, eventsPercent, weekStart]);
 
   useEffect(() => {
     let cancelled = false;
