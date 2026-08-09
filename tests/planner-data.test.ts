@@ -5,6 +5,7 @@ import {
   calendarEventToInsert,
   calendarEventToUpdate,
   monthGridDateRange,
+  weekDateRange,
 } from "../lib/planner-data/calendar-events.ts";
 import type { CalendarEventRow } from "../lib/planner-data/calendar-events.ts";
 import type { CalendarEvent } from "../lib/planner-models.ts";
@@ -59,5 +60,19 @@ test("loads the complete visible date range for a four-row month", () => {
   assert.deepEqual(monthGridDateRange(2026, 2), {
     startDate: "2026-02-01",
     endDate: "2026-02-28",
+  });
+});
+
+test("loads exactly the selected Sunday-first Week range", () => {
+  assert.deepEqual(weekDateRange("2026-08-16"), {
+    startDate: "2026-08-16",
+    endDate: "2026-08-22",
+  });
+});
+
+test("normalizes Week ranges across a month and year boundary", () => {
+  assert.deepEqual(weekDateRange("2026-12-28"), {
+    startDate: "2026-12-27",
+    endDate: "2027-01-02",
   });
 });

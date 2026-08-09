@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
 import {
   adjacentWeek,
@@ -13,15 +13,15 @@ import {
   weekPath,
   weekTitle,
 } from "@/lib/calendar";
+import { eventsForDate } from "@/lib/month-events";
+import {
+  loadCalendarEvents,
+  weekDateRange,
+} from "@/lib/planner-data/calendar-events";
+import type { CalendarEvent } from "@/lib/planner-models";
 import { PlannerShell } from "./planner-shell";
 
 type WeekPlannerProps = { weekStart: string };
-
-const SAMPLE_EVENTS: Record<number, string> = {
-  1: "Coffee with Maya",
-  3: "Dentist · 10am",
-  5: "Movie night",
-};
 
 const SAMPLE_TASKS: Record<number, string> = {
   1: "Pick up flowers",
@@ -39,9 +39,11 @@ function clampEventsPercent(value: number) {
 export function WeekPlanner({ weekStart }: WeekPlannerProps) {
   const [eventsPercent, setEventsPercent] = useState(58);
   const [isResizing, setIsResizing] = useState(false);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loadState, setLoadState] = useState<"loading" | "loaded" | "error">("loading");
+  const [loadVersion, setLoadVersion] = useState(0);
   const activePointerRef = useRef<number | null>(null);
-  const week = buildWeek(weekStart);
-  if (!week) return null;
+  const week = buildWeek(weekStart)!;
   const previous = adjacentWeek(week.weekStart, -1)!;
   const next = adjacentWeek(week.weekStart, 1)!;
   const middleDate = fromDateKey(week.days[3].date)!;
@@ -50,6 +52,34 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
     "--week-events-track": `${eventsPercent}fr`,
     "--week-tasks-track": `${100 - eventsPercent}fr`,
   } as CSSProperties;
+
+  useEffect(() => {
+    let cancelled = false;
+    const range = weekDateRange(weekStart);
+    if (!range) return;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setEvents([]);
+      setLoadState("loading");
+
+      loadCalendarEvents(range)
+        .then((loadedEvents) => {
+          if (cancelled) return;
+          setEvents(loadedEvents);
+          setLoadState("loaded");
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return;
+          console.error("[planner] week calendar event load failed", error);
+          setLoadState("error");
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [weekStart, loadVersion]);
 
   function resizeFromPointer(pointerEvent: PointerEvent<HTMLButtonElement>) {
     const day = pointerEvent.currentTarget.closest<HTMLElement>(".week-day");
@@ -114,11 +144,27 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
         </div>
         <Link className="nav-arrow" href={weekPath(next)} aria-label="Next week">›</Link>
       </div>
-      <Link className="back-to-month" href={monthHref}>← Back to month</Link>
+      <div className="week-tools">
+        <Link className="back-to-month" href={monthHref}>← Back to month</Link>
+        <div
+          className={`planner-save-state${loadState === "error" ? " planner-save-state--error" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          {loadState === "loading" ? <span>Loading events…</span> : null}
+          {loadState === "error" ? (
+            <>
+              <span>Couldn’t load events</span>
+              <button type="button" onClick={() => setLoadVersion((current) => current + 1)}>Retry</button>
+            </>
+          ) : null}
+        </div>
+      </div>
       <div className="week-scroll">
         <div
           className={`week-calendar${isResizing ? " week-calendar--resizing" : ""}`}
           aria-label={`Week of ${week.weekStart}`}
+          aria-busy={loadState === "loading"}
           style={weekSizingStyle}
         >
           {week.days.map((day) => {
@@ -132,7 +178,9 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
                 </header>
                 <div className="week-section week-events">
                   <p className="week-section-label">Events</p>
-                  {SAMPLE_EVENTS[day.weekday] ? <p className="week-entry">{SAMPLE_EVENTS[day.weekday]}</p> : null}
+                  {eventsForDate(events, day.date).map((event) => (
+                    <p className="week-entry" key={event.id}>{event.content}</p>
+                  ))}
                 </div>
                 <button
                   type="button"

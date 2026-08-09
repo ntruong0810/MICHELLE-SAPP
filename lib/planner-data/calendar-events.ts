@@ -1,4 +1,4 @@
-import { buildMonthWeeks } from "../calendar.ts";
+import { buildMonthWeeks, buildWeek } from "../calendar.ts";
 import type { CalendarEvent } from "../planner-models.ts";
 import {
   ensureAnonymousPlannerUser,
@@ -70,6 +70,15 @@ export function monthGridDateRange(year: number, month: number): CalendarEventDa
   return {
     startDate: weeks[0].days[0].date,
     endDate: weeks.at(-1)!.days[6].date,
+  };
+}
+
+export function weekDateRange(weekStart: string): CalendarEventDateRange | null {
+  const week = buildWeek(weekStart);
+  if (!week) return null;
+  return {
+    startDate: week.days[0].date,
+    endDate: week.days[6].date,
   };
 }
 

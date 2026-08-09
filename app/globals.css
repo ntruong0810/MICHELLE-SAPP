@@ -375,6 +375,7 @@ select:focus-visible {
     overflow: hidden;
     padding: clamp(9px, 1.2dvh, 12px) 10px;
   }
+
 }
 
 .month-scroll,
@@ -824,6 +825,10 @@ select:focus-visible {
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.week-tools {
+  position: relative;
 }
 
 .week-entry {
