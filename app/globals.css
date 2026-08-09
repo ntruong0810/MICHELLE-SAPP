@@ -835,6 +835,10 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
+.week-tools {
+  position: relative;
+}
+
 .week-entry {
   margin: 15px 0 0;
   font-family: var(--font-display);

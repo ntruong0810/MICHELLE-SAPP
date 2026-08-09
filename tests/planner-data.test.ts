@@ -70,7 +70,7 @@ test("loads exactly the selected Sunday-first Week range", () => {
   });
 });
 
-test("normalizes a Week range across a year boundary", () => {
+test("normalizes Week ranges across a month and year boundary", () => {
   assert.deepEqual(weekDateRange("2026-12-28"), {
     startDate: "2026-12-27",
     endDate: "2027-01-02",
