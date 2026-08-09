@@ -9,10 +9,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --test tests/calendar.test.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.2",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"

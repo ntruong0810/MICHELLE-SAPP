@@ -1,4 +1,4 @@
-export type TextSize = "small" | "medium" | "large" | "xlarge";
+export type TextSize = "small" | "medium" | "large";
 
 export type CalendarEvent = {
   id: string;

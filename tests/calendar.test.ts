@@ -6,6 +6,7 @@ import {
   buildMonthWeeks,
   buildWeek,
   fromDateKey,
+  monthPath,
   weekTitle,
 } from "../lib/calendar.ts";
 
@@ -40,4 +41,10 @@ test("moves cleanly across month, week, and year boundaries", () => {
 test("rejects impossible date keys", () => {
   assert.equal(fromDateKey("2026-02-29"), null);
   assert.equal(fromDateKey("not-a-date"), null);
+});
+
+test("formats Month jump routes with a two-digit month and unchanged year", () => {
+  assert.equal(monthPath(2026, 1), "/month/2026/01");
+  assert.equal(monthPath(2026, 8), "/month/2026/08");
+  assert.equal(monthPath(2026, 12), "/month/2026/12");
 });
