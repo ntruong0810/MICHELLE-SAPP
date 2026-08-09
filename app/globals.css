@@ -1,0 +1,440 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #fbf7ed;
+  --paper-deep: #f4eddf;
+  --paper-soft: #fffdf7;
+  --ink: #3f3934;
+  --ink-muted: #81786e;
+  --line: #d9cfc0;
+  --line-soft: #e9e1d5;
+  --sunday: #bd665d;
+  --saturday: #5f8198;
+  --sage: #7e9179;
+  --blush: #edd8d2;
+  --shadow: rgba(75, 59, 42, 0.09);
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-line: var(--line);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--paper-deep);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 12% 3%, rgba(255, 255, 255, 0.62), transparent 28rem),
+    var(--paper-deep);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--blush);
+}
+
+.planner-page {
+  min-height: 100vh;
+  padding: 18px clamp(12px, 2vw, 30px) 28px;
+}
+
+.planner-sheet {
+  width: min(1760px, 100%);
+  min-height: calc(100vh - 46px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(154, 137, 117, 0.35);
+  border-radius: 5px;
+  background: var(--paper);
+  box-shadow: 0 16px 50px var(--shadow);
+}
+
+.planner-topbar {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px clamp(16px, 2vw, 30px);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.planner-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.planner-brand-mark {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--sunday);
+  box-shadow: 13px 0 0 var(--sage), 26px 0 0 var(--saturday);
+  margin-right: 26px;
+}
+
+.planner-view-switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.planner-view-link {
+  padding: 7px 9px 5px;
+  border-bottom: 1px solid transparent;
+}
+
+.planner-view-link[aria-current="page"] {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.planner-content {
+  padding: clamp(16px, 2.2vw, 34px);
+}
+
+.calendar-heading {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  max-width: 630px;
+  margin: 0 auto 18px;
+  text-align: center;
+}
+
+.calendar-kicker {
+  margin: 0 0 3px;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.calendar-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.65rem, 3vw, 2.55rem);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
+.nav-arrow {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  line-height: 1;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.nav-arrow:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+
+.month-tools {
+  display: flex;
+  justify-content: center;
+  margin: -5px 0 20px;
+}
+
+.month-jump {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.month-jump select,
+.month-jump button {
+  min-height: 31px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper-soft);
+  color: var(--ink-muted);
+  font-size: 0.73rem;
+}
+
+.month-jump select {
+  padding: 0 25px 0 8px;
+}
+
+.month-jump button {
+  padding: 0 12px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.month-scroll,
+.week-scroll {
+  overflow-x: auto;
+  scrollbar-color: var(--line) transparent;
+}
+
+.month-calendar {
+  min-width: 880px;
+}
+
+.weekday-row,
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) 54px;
+}
+
+.weekday-label {
+  padding: 0 6px 9px;
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  letter-spacing: 0.19em;
+  text-align: center;
+}
+
+.weekday-label:first-child,
+.day-number.sunday,
+.week-day:first-child .week-day-name {
+  color: var(--sunday);
+}
+
+.weekday-label:nth-child(7),
+.day-number.saturday,
+.week-day:nth-child(7) .week-day-name {
+  color: var(--saturday);
+}
+
+.calendar-week:first-of-type .day-cell {
+  border-top: 1px solid var(--line);
+}
+
+.day-cell {
+  position: relative;
+  min-height: clamp(112px, 15vh, 164px);
+  padding: 10px 11px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 247, 0.27);
+}
+
+.day-cell:first-child {
+  border-left: 1px solid var(--line);
+}
+
+.day-cell.outside {
+  background: rgba(223, 213, 197, 0.14);
+}
+
+.day-cell.outside .day-number {
+  opacity: 0.38;
+}
+
+.day-number {
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+}
+
+.day-note {
+  width: fit-content;
+  max-width: 96%;
+  margin: 12px 0 0;
+  padding: 3px 6px 2px;
+  border-radius: 2px;
+  background: rgba(237, 216, 210, 0.64);
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.day-note.sage {
+  background: rgba(203, 217, 198, 0.54);
+}
+
+.day-note.blue {
+  background: rgba(203, 217, 225, 0.52);
+}
+
+.week-row-link-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-bottom: 1px solid transparent;
+}
+
+.week-row-link {
+  padding: 8px 0 8px 8px;
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.week-row-link:hover {
+  color: var(--ink);
+}
+
+.week-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(126px, 1fr));
+  min-width: 920px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.week-day {
+  min-height: calc(100vh - 225px);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 247, 0.25);
+}
+
+.week-day-header {
+  min-height: 63px;
+  padding: 12px 10px 9px;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: center;
+}
+
+.week-day-name {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+}
+
+.week-day-number {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.week-section {
+  padding: 13px 12px;
+}
+
+.week-events {
+  min-height: calc((100vh - 305px) * 0.58);
+}
+
+.week-tasks {
+  min-height: calc((100vh - 305px) * 0.42);
+  border-top: 1px dashed var(--line);
+}
+
+.week-section-label {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.week-entry {
+  margin: 15px 0 0;
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.week-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 15px 0 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+}
+
+.task-box {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 2px;
+  border: 1px solid var(--ink-muted);
+  border-radius: 1px;
+}
+
+.back-to-month {
+  display: inline-flex;
+  margin: -3px 0 17px;
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+}
+
+.back-to-month:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 700px) {
+  .planner-page {
+    padding: 0;
+  }
+
+  .planner-sheet {
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .planner-content {
+    padding: 18px 12px 24px;
+  }
+
+  .planner-brand-mark {
+    display: none;
+  }
+
+  .calendar-heading {
+    margin-bottom: 16px;
+  }
+}
