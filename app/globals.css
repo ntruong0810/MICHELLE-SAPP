@@ -375,6 +375,11 @@ select:focus-visible {
     overflow: hidden;
     padding: clamp(9px, 1.2dvh, 12px) 10px;
   }
+
+  .planner-content--week .week-events,
+  .planner-content--week .week-tasks {
+    overflow-y: auto;
+  }
 }
 
 .month-scroll,
@@ -833,14 +838,121 @@ select:focus-visible {
   line-height: 1.45;
 }
 
-.week-task {
-  display: flex;
-  align-items: flex-start;
+.week-inline-list {
+  display: grid;
   gap: 7px;
-  margin: 15px 0 0;
+  margin-top: 11px;
+}
+
+.week-event-row,
+.week-event-new,
+.week-task-row,
+.week-task-new {
+  display: grid;
+  min-width: 0;
+  align-items: start;
+  gap: 6px;
+}
+
+.week-event-row {
+  grid-template-columns: 7px minmax(0, 1fr) 12px;
+}
+
+.week-event-row--calendar,
+.week-event-new {
+  grid-template-columns: 7px minmax(0, 1fr);
+}
+
+.week-task-row {
+  grid-template-columns: 11px minmax(0, 1fr) 12px;
+}
+
+.week-task-new {
+  grid-template-columns: 11px minmax(0, 1fr);
+}
+
+.week-entry-mark {
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.week-calendar-entry,
+.week-inline-content,
+.week-inline-input {
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.week-calendar-entry,
+.week-inline-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.week-inline-content,
+.week-inline-delete {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.week-inline-content {
+  cursor: text;
+  text-align: left;
+}
+
+.week-inline-delete {
+  color: var(--sunday);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.week-event-row:hover .week-inline-delete,
+.week-event-row:focus-within .week-inline-delete,
+.week-task-row:hover .week-inline-delete,
+.week-task-row:focus-within .week-inline-delete {
+  opacity: 0.72;
+}
+
+.week-inline-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 1px 2px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+}
+
+.week-inline-input:focus {
+  border-bottom-color: var(--sage);
+  outline: 0;
+}
+
+.week-inline-input::placeholder {
+  color: color-mix(in srgb, var(--ink-muted) 52%, transparent);
+  font-style: italic;
+}
+
+.week-task-checkbox {
+  width: 11px;
+  height: 11px;
+  margin: 2px 0 0;
+  accent-color: var(--sage);
+  cursor: pointer;
+}
+
+.week-task-row--completed .week-inline-content {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ink-muted) 65%, transparent);
 }
 
 .task-box {

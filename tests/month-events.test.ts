@@ -52,7 +52,7 @@ test("deleting one event preserves the remaining event and its ordering", () => 
 test("events remain associated only with their own date", () => {
   let events: CalendarEvent[] = [];
   events = add(events, "twenty", "2026-08-20", "Beach day");
-  events = add(events, "twenty-one", "2026-08-21", "Call Mom");
+  events = add(events, "twenty-one", "2026-08-21", "Library visit");
 
   assert.deepEqual(eventsForDate(events, "2026-08-20").map((event) => event.id), ["twenty"]);
   assert.deepEqual(eventsForDate(events, "2026-08-21").map((event) => event.id), ["twenty-one"]);

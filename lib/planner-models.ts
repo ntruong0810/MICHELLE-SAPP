@@ -21,13 +21,13 @@ export type WeeklyOnlyEvent = {
   date: string;
   weekStart: string;
   content: string;
-  textSize: TextSize;
   sortOrder: number;
 };
 
 export type WeeklyTask = {
   id: string;
   date: string;
+  weekStart: string;
   content: string;
   isCompleted: boolean;
   sortOrder: number;
