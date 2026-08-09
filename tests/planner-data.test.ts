@@ -14,7 +14,6 @@ const row: CalendarEventRow = {
   user_id: "6507c4d8-1adc-4ddf-bb87-4706c42fa272",
   date: "2026-08-20",
   content: "Beach day",
-  text_size: "large",
   sort_order: 2,
   created_at: "2026-08-09T12:00:00.000Z",
   updated_at: "2026-08-09T12:00:00.000Z",
@@ -24,7 +23,7 @@ const event: CalendarEvent = {
   id: row.id,
   date: row.date,
   content: row.content,
-  textSize: row.text_size,
+  textSize: "medium",
   sortOrder: row.sort_order,
 };
 
@@ -32,13 +31,11 @@ test("maps a snake_case database row to the CalendarEvent model", () => {
   assert.deepEqual(calendarEventFromRow(row), event);
 });
 
-test("builds a create payload with ownership and persisted formatting", () => {
+test("builds a create payload without the temporary local event ID", () => {
   assert.deepEqual(calendarEventToInsert(event, row.user_id), {
-    id: event.id,
     user_id: row.user_id,
     date: "2026-08-20",
     content: "Beach day",
-    text_size: "large",
     sort_order: 2,
   });
 });
@@ -47,7 +44,6 @@ test("builds an update payload without leaking database-only fields", () => {
   assert.deepEqual(calendarEventToUpdate(event), {
     date: "2026-08-20",
     content: "Beach day",
-    text_size: "large",
     sort_order: 2,
   });
 });

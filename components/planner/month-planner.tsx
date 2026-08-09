@@ -88,8 +88,9 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
           setEvents(loadedEvents);
           setSaveState("saved");
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           if (cancelled) return;
+          console.error("[planner] calendar event load failed", error);
           setSaveState("error");
         })
         .finally(() => {
@@ -180,9 +181,40 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
     void flushMutationQueue();
   }
 
+  function reconcileCreatedEvent(temporaryId: string, persistedEvent: CalendarEvent) {
+    const currentEvents = eventsRef.current;
+    if (currentEvents.some((event) => event.id === temporaryId)) {
+      replaceEvents(currentEvents.map((event) => (
+        event.id === temporaryId
+          ? { ...event, id: persistedEvent.id }
+          : event
+      )));
+    }
+
+    const draft = activeDraftRef.current;
+    if (draft?.kind === "edit" && draft.eventId === temporaryId) {
+      replaceActiveDraft({ ...draft, eventId: persistedEvent.id });
+    }
+
+    mutationQueueRef.current = mutationQueueRef.current.map((queuedMutation, index) => {
+      if (index === 0) return queuedMutation;
+      if (queuedMutation.kind === "update" && queuedMutation.event.id === temporaryId) {
+        return {
+          ...queuedMutation,
+          event: { ...queuedMutation.event, id: persistedEvent.id },
+        };
+      }
+      if (queuedMutation.kind === "delete" && queuedMutation.eventId === temporaryId) {
+        return { ...queuedMutation, eventId: persistedEvent.id };
+      }
+      return queuedMutation;
+    });
+  }
+
   async function persistMutation(mutation: CalendarEventMutation) {
     if (mutation.kind === "create") {
-      await persistCreatedEvent(mutation.event);
+      const persistedEvent = await persistCreatedEvent(mutation.event);
+      reconcileCreatedEvent(mutation.event.id, persistedEvent);
     } else if (mutation.kind === "update") {
       await persistUpdatedEvent(mutation.event);
     } else {

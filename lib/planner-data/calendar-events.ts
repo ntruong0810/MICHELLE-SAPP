@@ -1,36 +1,32 @@
 import { buildMonthWeeks } from "../calendar.ts";
-import type { CalendarEvent, TextSize } from "../planner-models.ts";
+import type { CalendarEvent } from "../planner-models.ts";
 import {
   ensureAnonymousPlannerUser,
   getSupabaseBrowserClient,
 } from "../supabase/client.ts";
 
-const EVENT_COLUMNS = "id,user_id,date,content,text_size,sort_order,created_at,updated_at";
+const EVENT_COLUMNS = "id,user_id,date,content,sort_order,created_at,updated_at";
 
 export type CalendarEventRow = {
   id: string;
   user_id: string;
   date: string;
   content: string;
-  text_size: TextSize;
   sort_order: number;
   created_at: string;
   updated_at: string;
 };
 
 export type CalendarEventInsert = {
-  id: string;
   user_id: string;
   date: string;
   content: string;
-  text_size: TextSize;
   sort_order: number;
 };
 
 export type CalendarEventUpdate = {
   date: string;
   content: string;
-  text_size: TextSize;
   sort_order: number;
 };
 
@@ -44,7 +40,7 @@ export function calendarEventFromRow(row: CalendarEventRow): CalendarEvent {
     id: row.id,
     date: row.date,
     content: row.content,
-    textSize: row.text_size,
+    textSize: "medium",
     sortOrder: row.sort_order,
   };
 }
@@ -54,11 +50,9 @@ export function calendarEventToInsert(
   userId: string,
 ): CalendarEventInsert {
   return {
-    id: event.id,
     user_id: userId,
     date: event.date,
     content: event.content,
-    text_size: event.textSize,
     sort_order: event.sortOrder,
   };
 }
@@ -67,7 +61,6 @@ export function calendarEventToUpdate(event: CalendarEvent): CalendarEventUpdate
   return {
     date: event.date,
     content: event.content,
-    text_size: event.textSize,
     sort_order: event.sortOrder,
   };
 }
@@ -111,11 +104,19 @@ export async function createCalendarEvent(event: CalendarEvent) {
   const { client, userId } = await plannerConnection();
   const { data, error } = await client
     .from("calendar_events")
-    .upsert(calendarEventToInsert(event, userId), { onConflict: "id" })
+    .insert(calendarEventToInsert(event, userId))
     .select(EVENT_COLUMNS)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[planner] calendar event insert failed", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw error;
+  }
   return calendarEventFromRow(data as CalendarEventRow);
 }
 

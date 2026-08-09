@@ -1,11 +1,8 @@
-create type public.calendar_event_text_size as enum ('small', 'medium', 'large');
-
 create table public.calendar_events (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   date date not null,
   content text not null check (char_length(btrim(content)) > 0),
-  text_size public.calendar_event_text_size not null default 'medium',
   sort_order integer not null default 0 check (sort_order >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
