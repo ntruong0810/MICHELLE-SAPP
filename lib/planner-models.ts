@@ -1,19 +1,8 @@
-export type TextSize = "small" | "medium" | "large";
-
 export type CalendarEvent = {
   id: string;
   date: string;
   content: string;
-  textSize: TextSize;
   sortOrder: number;
-};
-
-export type WeeklyEventState = {
-  sourceEventId: string;
-  weekStart: string;
-  status: "overridden" | "hidden";
-  localContent?: string;
-  localTextSize?: TextSize;
 };
 
 export type WeeklyOnlyEvent = {
@@ -36,11 +25,8 @@ export type WeeklyTask = {
 export type PlannerMedia = {
   id: string;
   date: string;
-  eventId?: string;
   kind: "photo" | "sticker";
-  storagePath: string;
-  positionX: number;
-  positionY: number;
-  width: number;
-  height: number;
+  storagePath: string | null;
+  stickerKey: string | null;
+  previewUrl?: string;
 };

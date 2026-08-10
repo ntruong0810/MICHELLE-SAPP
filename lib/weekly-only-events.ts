@@ -86,11 +86,3 @@ export function deleteWeeklyOnlyEvent(
 ): WeeklyOnlyEvent[] {
   return events.filter((event) => event.id !== eventId);
 }
-
-export function replaceWeeklyOnlyEventId(
-  events: WeeklyOnlyEvent[],
-  temporaryId: string,
-  persistedEvent: WeeklyOnlyEvent,
-): WeeklyOnlyEvent[] {
-  return events.map((event) => event.id === temporaryId ? persistedEvent : event);
-}

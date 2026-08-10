@@ -10,6 +10,8 @@ type CalendarEventEntryProps = {
   onCommit: () => void;
   onCancel: () => void;
   onDelete: () => void;
+  onTabPrevious?: () => void;
+  onTabNext?: () => void;
 };
 
 export function CalendarEventEntry({
@@ -21,13 +23,15 @@ export function CalendarEventEntry({
   onCommit,
   onCancel,
   onDelete,
+  onTabPrevious,
+  onTabNext,
 }: CalendarEventEntryProps) {
   if (!isEditing) {
     return (
       <div className="calendar-event-row">
         <button
           type="button"
-          className={`calendar-event calendar-event--${event.textSize}`}
+          className="calendar-event"
           onClick={(clickEvent) => {
             clickEvent.stopPropagation();
             onBeginEdit();
@@ -59,6 +63,15 @@ export function CalendarEventEntry({
   }
 
   function handleKeyDown(keyEvent: KeyboardEvent<HTMLInputElement>) {
+    if (keyEvent.key === "Tab") {
+      const moveFocus = keyEvent.shiftKey ? onTabPrevious : onTabNext;
+      if (!moveFocus) return;
+      keyEvent.preventDefault();
+      onCommit();
+      moveFocus();
+      return;
+    }
+
     if (keyEvent.key === "Enter") {
       keyEvent.preventDefault();
       onCommit();
@@ -73,7 +86,7 @@ export function CalendarEventEntry({
     <div className="calendar-event-editor" onClick={(clickEvent) => clickEvent.stopPropagation()}>
       <input
         autoFocus
-        className={`calendar-event-input calendar-event--${event.textSize}`}
+        className="calendar-event-input"
         aria-label={`Edit ${event.content}`}
         value={draftContent}
         onBlur={handleBlur}

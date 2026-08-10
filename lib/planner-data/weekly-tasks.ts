@@ -1,8 +1,5 @@
 import type { WeeklyTask } from "../planner-models.ts";
-import {
-  ensureAnonymousPlannerUser,
-  getSupabaseBrowserClient,
-} from "../supabase/client.ts";
+import { plannerConnection } from "./connection.ts";
 
 const WEEKLY_TASK_COLUMNS = "id,user_id,date,week_start,content,is_completed,sort_order,created_at,updated_at";
 
@@ -47,17 +44,6 @@ export function weeklyTaskToInsert(task: WeeklyTask, userId: string): WeeklyTask
     is_completed: task.isCompleted,
     sort_order: task.sortOrder,
   };
-}
-
-async function plannerConnection() {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new Error(
-      "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    );
-  }
-  const userId = await ensureAnonymousPlannerUser(client);
-  return { client, userId };
 }
 
 function reportTaskError(operation: string, error: {

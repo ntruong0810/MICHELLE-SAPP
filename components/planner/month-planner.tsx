@@ -27,9 +27,11 @@ import {
 } from "@/lib/planner-data/calendar-events";
 import type { CalendarEvent } from "@/lib/planner-models";
 import { DayCell } from "./day-cell";
-import type { MonthDraft } from "./day-cell";
+import type { MonthDraft, MonthDraftTarget } from "./day-cell";
+import { DayMediaPanel } from "./day-media-panel";
 import { FocusedDayOverlay } from "./focused-day-overlay";
 import { MonthJump } from "./month-jump";
+import { PlannerDecorations } from "./planner-decorations";
 import { PlannerShell } from "./planner-shell";
 
 type MonthPlannerProps = { year: number; month: number };
@@ -48,6 +50,7 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
   const activeDraftRef = useRef<MonthDraft | null>(null);
   const nextEventIdRef = useRef(1);
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
+  const [mediaDate, setMediaDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [loadVersion, setLoadVersion] = useState(0);
@@ -55,6 +58,8 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
   const isFlushingMutationsRef = useRef(false);
   const isMountedRef = useRef(true);
   const weeks = buildMonthWeeks(year, month);
+  const calendarDays = weeks.flatMap((week) => week.days);
+  const calendarDayIndex = new Map(calendarDays.map((day, index) => [day.date, index]));
   const previous = adjacentMonth(year, month, -1);
   const next = adjacentMonth(year, month, 1);
   const today = new Date(Date.UTC(year, month - 1, Math.min(15, new Date(Date.UTC(year, month, 0)).getUTCDate())));
@@ -78,6 +83,7 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
       eventsRef.current = [];
       setEvents([]);
       setFocusedDate(null);
+      setMediaDate(null);
       setIsLoading(true);
       setSaveState("idle");
 
@@ -137,9 +143,21 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
     });
   }
 
-  function commitDraft() {
+  function moveKeyboardEntryToDate(date: string) {
+    const firstEvent = eventsForDate(eventsRef.current, date)[0];
+    if (firstEvent) beginEdit(firstEvent);
+    else beginCreate(date);
+  }
+
+  function commitDraft(expectedDraft?: MonthDraftTarget) {
     const draft = activeDraftRef.current;
     if (!draft) return;
+    if (expectedDraft?.kind === "create" && (
+      draft.kind !== "create" || draft.date !== expectedDraft.date
+    )) return;
+    if (expectedDraft?.kind === "edit" && (
+      draft.kind !== "edit" || draft.eventId !== expectedDraft.eventId
+    )) return;
     replaceActiveDraft(null);
 
     if (draft.kind === "create") {
@@ -279,40 +297,51 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
           ) : null}
         </div>
       </div>
-      <div className="month-scroll">
-        <div
-          className="month-calendar"
-          aria-label={`${MONTH_LABELS[month - 1]} ${year} calendar`}
-          aria-busy={isLoading}
-        >
-          <div className="weekday-row" aria-hidden="true">
-            {WEEKDAY_LABELS.map((day) => <div className="weekday-label" key={day}>{day}</div>)}
-            <div />
-          </div>
-          {weeks.map((week) => (
-            <div className="calendar-week" key={week.weekStart}>
-              {week.days.map((day) => (
-                <DayCell
-                  key={day.date}
-                  day={day}
-                  events={eventsForDate(events, day.date)}
-                  activeDraft={activeDraft}
-                  onBeginCreate={beginCreate}
-                  onBeginEdit={beginEdit}
-                  onDraftChange={changeDraftContent}
-                  onCommitDraft={commitDraft}
-                  onCancelDraft={() => replaceActiveDraft(null)}
-                  onDeleteEvent={deleteEvent}
-                  onOpenFocusedDay={setFocusedDate}
-                />
-              ))}
-              <div className="week-row-link-wrap">
-                <Link className="week-row-link" href={weekPath(week.weekStart)} aria-label={`Open week beginning ${week.weekStart}`}>
-                  Week<br />→
-                </Link>
-              </div>
+      <div className="month-calendar-stage">
+        <PlannerDecorations view="month" />
+        <div className="month-scroll">
+          <div
+            className="month-calendar"
+            aria-label={`${MONTH_LABELS[month - 1]} ${year} calendar`}
+            aria-busy={isLoading}
+          >
+            <div className="weekday-row" aria-hidden="true">
+              {WEEKDAY_LABELS.map((day) => <div className="weekday-label" key={day}>{day}</div>)}
+              <div />
             </div>
-          ))}
+            {weeks.map((week) => (
+              <div className="calendar-week" key={week.weekStart}>
+                {week.days.map((day) => {
+                  const dayEvents = eventsForDate(events, day.date);
+
+                  return (
+                    <DayCell
+                      key={day.date}
+                      day={day}
+                      previousDate={calendarDays[(calendarDayIndex.get(day.date) ?? 0) - 1]?.date ?? null}
+                      nextDate={calendarDays[(calendarDayIndex.get(day.date) ?? 0) + 1]?.date ?? null}
+                      events={dayEvents}
+                      activeDraft={activeDraft}
+                      onBeginCreate={beginCreate}
+                      onBeginEdit={beginEdit}
+                      onDraftChange={changeDraftContent}
+                      onCommitDraft={commitDraft}
+                      onCancelDraft={() => replaceActiveDraft(null)}
+                      onDeleteEvent={deleteEvent}
+                      onMoveToDate={moveKeyboardEntryToDate}
+                      onOpenFocusedDay={setFocusedDate}
+                      onOpenMedia={setMediaDate}
+                    />
+                  );
+                })}
+                <div className="week-row-link-wrap">
+                  <Link className="week-row-link" href={weekPath(week.weekStart)} aria-label={`Open week beginning ${week.weekStart}`}>
+                    Week<br />→
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       {focusedDate ? (
@@ -331,6 +360,9 @@ export function MonthPlanner({ year, month }: MonthPlannerProps) {
           onCancelDraft={() => replaceActiveDraft(null)}
           onDeleteEvent={deleteEvent}
         />
+      ) : null}
+      {mediaDate ? (
+        <DayMediaPanel date={mediaDate} onClose={() => setMediaDate(null)} />
       ) : null}
     </PlannerShell>
   );

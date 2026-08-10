@@ -28,12 +28,10 @@ test("editing one event leaves neighboring events unchanged", () => {
   let events: CalendarEvent[] = [];
   events = add(events, "beach", "2026-08-20", "Beach day");
   events = add(events, "dinner", "2026-08-20", "Dinner at 7");
-  events = updateCalendarEvent(events, "beach", { content: "Beach day with friends", textSize: "large" });
+  events = updateCalendarEvent(events, "beach", { content: "Beach day with friends" });
 
   assert.equal(events.find((event) => event.id === "beach")?.content, "Beach day with friends");
-  assert.equal(events.find((event) => event.id === "beach")?.textSize, "large");
   assert.equal(events.find((event) => event.id === "dinner")?.content, "Dinner at 7");
-  assert.equal(events.find((event) => event.id === "dinner")?.textSize, "medium");
 });
 
 test("deleting one event preserves the remaining event and its ordering", () => {

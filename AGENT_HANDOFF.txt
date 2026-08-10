@@ -1,0 +1,553 @@
+MICHELLE'S DAY PLANNER — CODEX AGENT HANDOFF
+Snapshot date: 2026-08-10 (America/Los_Angeles)
+
+HISTORICAL SNAPSHOT NOTICE
+This handoff predates the source cleanup performed later on 2026-08-10. Use README.md and the current repository as the authoritative developer guide. References below to TextSize, WeeklyEventState, lib/week-navigation.ts, tests/week-navigation.test.ts, and michelle-planner-logo.png describe the earlier snapshot and are no longer current.
+
+This document describes the repository and working tree as they actually existed at handoff time. The working tree contains substantial uncommitted work beyond HEAD. Preserve it. If this document and the repository disagree, the repository is authoritative.
+
+
+1. PROJECT GOAL
+
+Michelle's Day Planner is intended to be a simple, cute digital paper planner: a quiet place to write down plans, not a conventional project-management application. The experience should resemble a warm paper calendar or stationery page, with direct writing surfaces and restrained controls instead of cards, metrics, workflows, assignees, or dashboard chrome.
+
+The Month view is the broad planning surface. It shows a complete Sunday-first month grid (including adjacent-month days needed to complete each row), supports several independent notes/events per date, offers a focused-day overlay for overflow, and links each calendar row to its corresponding Week. The Week view is a seven-column page for the selected Sunday-through-Saturday range. It shows Month-created events as read-only canonical items, allows additional Week-only events, and keeps a separate persistent task list with checkboxes for each day.
+
+The central product distinction is between canonical Month events, Week-only events, and Week-only tasks. They share dates but are not interchangeable records. Photos/media are currently being added in the uncommitted working tree; that implementation is only partial.
+
+
+2. CURRENT TECH STACK
+
+- Runtime/package manager assumptions: npm with package-lock.json; package.json requires Node >=22.13.0.
+- Framework: Next.js 16.2.6, App Router, with dynamic Month and Week routes.
+- UI: React 19.2.6 and React DOM 19.2.6.
+- Language: TypeScript 5.9.3, strict mode, noEmit, bundler module resolution, @/* path alias.
+- Styling: Tailwind CSS 4.2.1 is installed through @tailwindcss/postcss 4.2.1. app/globals.css imports Tailwind once, but the planner's actual presentation is primarily custom global CSS and CSS variables rather than Tailwind utility classes.
+- Data/auth: @supabase/supabase-js 2.112.2, used directly from client components through a singleton browser client.
+- Authentication: Supabase Anonymous Auth. The browser session is persisted and refreshed automatically. There is no application login UI.
+- Database: Supabase Postgres, with UUID primary keys, auth.users ownership, and RLS SQL stored under supabase/.
+- Storage: a private Supabase Storage bucket named planner-photos is defined by the uncommitted supabase/planner_media.sql.
+- Deployment assumptions: no checked-in deployment configuration is present. The app should run on a normal Next.js-capable Node host. app/layout.tsx uses NEXT_PUBLIC_SITE_URL for metadataBase and falls back to http://localhost:3000. .vercel is ignored, but no Vercel project metadata is committed. next.config.ts has a development-only allowedDevOrigins entry for 192.168.1.193.
+- Testing: Node's built-in test runner executes TypeScript via --experimental-strip-types. Tests are unit/data-mapping tests only; there is no browser, component, end-to-end, or live Supabase integration test setup. ESLint 9.39.4 with eslint-config-next 16.2.6 covers linting. next build supplies TypeScript/build verification.
+
+Installed top-level versions were confirmed with npm ls --depth=0. Other relevant dev packages are @types/node 22.19.19, @types/react 19.2.14, and @types/react-dom 19.2.3.
+
+
+3. CURRENT DIRECTORY / ARCHITECTURE
+
+app/
+- app/page.tsx redirects to the current local calendar month.
+- app/month/page.tsx accepts optional month/year query parameters, validates them, and redirects to the canonical /month/YYYY/MM route.
+- app/month/[year]/[month]/page.tsx validates route params, supplies metadata, and renders MonthPlanner.
+- app/week/[weekStart]/page.tsx validates/normalizes the supplied ISO date to its Sunday and renders WeekPlanner.
+- app/layout.tsx owns global metadata and imports app/globals.css.
+- app/globals.css owns almost all visual styling, desktop viewport fitting, horizontal-scroll behavior, media dialogs, and the Week Events/Tasks layout.
+
+components/planner/
+- month-planner.tsx owns Month loading, optimistic event state, a serialized mutation queue, navigation, focused-day state, and media-panel state.
+- day-cell.tsx renders one Month cell, the first three visible events, overflow control, direct writing behavior, keyboard traversal between dates, and the per-day media trigger.
+- calendar-event-entry.tsx renders/edits/deletes a canonical Month event.
+- focused-day-overlay.tsx shows all events for a date and allows Month event create/edit/delete.
+- month-jump.tsx owns the month/year select controls and routing.
+- week-planner.tsx owns Week loading, canonical/Week-only event composition, Week-only event/task mutations, task checkboxes, per-week resizable Events/Tasks split, and read-only Week photo loading/display.
+- week-only-event-entry.tsx and weekly-task-entry.tsx own Week inline record controls.
+- planner-shell.tsx owns the shared paper sheet, branding, and Month/Week navigation.
+- day-media-panel.tsx is uncommitted Stage 6 work: per-date media loading, photo upload, gallery display, and deletion. It can render saved sticker rows but currently has no control to create a sticker.
+- week-photo-strip.tsx is uncommitted Stage 6 work: read-only stacked photo thumbnails and a modal viewer in Week.
+- planner-logo.tsx, sticker-art.tsx, and public/branding/michelle-planner-logo.png are uncommitted branding/media work.
+
+lib/
+- calendar.ts contains UTC-safe ISO date parsing/formatting, month/week construction, adjacent navigation, paths, and titles.
+- planner-models.ts contains shared TypeScript models. It includes two vestigial types/fields discussed below.
+- month-events.ts contains pure canonical Month event create/edit/delete/filter operations.
+- weekly-only-events.ts combines canonical and Week-only events for display while retaining origin, and contains pure Week-only event operations.
+- weekly-tasks.ts contains pure task filtering/create/edit/toggle/delete operations.
+- planner-media.ts is uncommitted Stage 6 work: supported sticker keys and pure media collection helpers.
+- week-navigation.ts is an uncommitted clamp helper intended for mobile day selection, but it is not imported by application code.
+
+lib/planner-data/
+- calendar-events.ts maps calendar_events rows and performs range load/create/update/delete.
+- weekly-only-events.ts maps weekly_only_events rows and performs week load/create/update/delete.
+- weekly-tasks.ts maps weekly_tasks rows and performs week load/create/update/toggle/delete.
+- planner-media.ts is uncommitted Stage 6 work: planner_media mapping, signed photo URLs, photo validation/upload, sticker insert support, range loading, and media deletion.
+- Every data-access module obtains the same anonymous authenticated user through lib/supabase/client.ts and scopes queries by user_id in addition to database RLS.
+
+lib/supabase/
+- client.ts creates/caches the Supabase browser client and initializes/reuses an anonymous session.
+
+supabase/
+- calendar_events.sql, weekly_only_events.sql, and weekly_tasks.sql define the currently committed core tables, triggers, grants, indexes, and RLS policies.
+- planner_media.sql is untracked/uncommitted. It defines the media metadata table, private storage bucket, and policies. Whether it has been applied to a remote Supabase project cannot be established from the repository.
+
+tests/
+- calendar.test.ts: month/week/date utility behavior.
+- month-events.test.ts: canonical Month event collection semantics.
+- planner-data.test.ts: calendar row/payload mappings and visible date ranges.
+- week-entry.test.ts: canonical vs Week-only composition, Week-only events, tasks, and row/payload mapping.
+- planner-media.test.ts: uncommitted media mapping, sticker payload, immutable helpers, and Week photo filtering.
+- week-navigation.test.ts: uncommitted tests for the currently unused mobile index clamp helper.
+
+
+4. COMPLETED STAGES
+
+Stage 1 — Foundation: COMPLETE
+Next.js App Router foundation, shared planner shell, UTC calendar utilities, Month/Week routes, core models, global stationery styling, and baseline tests exist.
+
+Stage 2 — Monthly planner interactions: COMPLETE
+Month supports create, edit, delete, multiple events, overflow/focused day, keyboard movement, adjacent/direct navigation, and per-row Week links. There is no active text-size or bold UI.
+
+Stage 3 — Supabase persistence: COMPLETE for core planner records
+Calendar events, Week-only events, and weekly tasks have browser data-access modules, database SQL, anonymous-auth ownership, RLS, optimistic UI, save states, and retry behavior. This label does not imply that the uncommitted media schema has been applied remotely.
+
+Stage 4 — Month -> Week synchronization: COMPLETE
+Week loads canonical calendar_events for exactly its seven-day range and displays those records without duplicating them into another table. Changes made in Month are visible after Week loads/reloads. Week does not edit canonical records.
+
+Stage 5 — Weekly events + Weekly tasks: COMPLETE
+Week-only events and tasks have separate models/tables/data access. Create, edit, delete, task toggle, ordering, loading, save/error states, and tests exist. The Events/Tasks divider is pointer- and keyboard-resizable and persists per week in localStorage.
+
+Stage 6 — Photos & Stickers: PARTIAL (all implementation is uncommitted)
+The working tree contains planner_media SQL/data access, a private planner-photos bucket definition, Month per-date photo upload/gallery/delete, and read-only Week photo stacks/viewer. Sticker keys, SVG art, insert data access, and rendering exist, but no user-facing sticker creation/picker exists. There are no position, size, or rotation fields, and media is rendered in fixed galleries/stacks rather than freely placed on a paper canvas. The SQL may still need to be applied to Supabase. This stage is not complete.
+
+Stage 7 — Responsive / UX / accessibility: PARTIAL
+Desktop Month and Week both fit the available viewport above 700px and share sizing variables; scrollable inner event/task areas prevent page growth. Dialog roles, labels, status regions, focus restoration/traps for media dialogs, keyboard event editing/traversal, keyboard divider controls, and coarse-pointer media affordances exist. At <=700px the planner removes sheet chrome and adapts media dialogs, but the calendar itself remains at an 880px minimum width and horizontally scrolls. The unused week-navigation.ts does not provide actual mobile single-day Week behavior. No browser-level accessibility or responsive regression tests exist.
+
+Stage 8 — Verification + deployment: PARTIAL
+Unit tests, lint, production build, and diff checks pass at handoff. There is no checked-in deployment config, recorded production deployment, live Supabase integration test, E2E suite, or evidence that planner_media.sql is deployed.
+
+
+5. CURRENT DATA MODEL
+
+All source-level models below are exactly as declared in lib/planner-models.ts at handoff.
+
+TextSize
+- Union: "small" | "medium" | "large".
+- This remains in current source as a vestige. Do not restore a text-size control or add persistence for it. The historical product decision was to remove textSize and isBold as editable features.
+
+CalendarEvent
+- id: string
+- date: string (ISO YYYY-MM-DD)
+- content: string
+- textSize: TextSize
+- sortOrder: number
+
+Important discrepancy: textSize still exists in the TypeScript model, helper APIs, CSS classes, and tests, and database rows are always mapped to "medium". It is not a calendar_events database column, not included in insert/update payloads, and has no UI control. isBold does not exist anywhere in the current model/schema. Treat textSize as non-persistent legacy scaffolding, not a feature to restore.
+
+WeeklyEventState
+- sourceEventId: string
+- weekStart: string
+- status: "overridden" | "hidden"
+- localContent?: string
+- localTextSize?: TextSize
+
+WeeklyEventState is type-only, unused scaffolding. There is no weekly_event_states table, data-access module, or UI. Overrides/hide/reset are not implemented. localTextSize is also vestigial and must not be used to restore text sizing.
+
+WeeklyOnlyEvent
+- id: string
+- date: string
+- weekStart: string
+- content: string
+- sortOrder: number
+
+WeeklyTask
+- id: string
+- date: string
+- weekStart: string
+- content: string
+- isCompleted: boolean
+- sortOrder: number
+
+PlannerMedia (current uncommitted working-tree shape)
+- id: string
+- date: string
+- kind: "photo" | "sticker"
+- storagePath: string | null
+- stickerKey: string | null
+- previewUrl?: string
+
+PlannerMedia does not currently expose userId and has no eventId, positionX, positionY, width, height, or rotation. Ownership lives in the database row as user_id. previewUrl is an ephemeral signed Storage URL populated at load/upload time. In HEAD before the uncommitted edits, PlannerMedia was only a placeholder with eventId and geometry fields; the working tree deliberately replaced that shape with the current fixed-gallery model.
+
+
+6. DATABASE / SUPABASE ARCHITECTURE
+
+calendar_events (supabase/calendar_events.sql)
+- Purpose: canonical Month-created events/notes. Week reads these same rows.
+- Ownership: user_id UUID defaults to auth.uid(), references auth.users(id), and cascades on user deletion.
+- Columns: id UUID default gen_random_uuid(), user_id, date, content, sort_order, created_at, updated_at.
+- Index: (user_id, date, sort_order).
+- Trigger: set_calendar_event_updated_at updates updated_at before update.
+- RLS/grants: anon has table privileges revoked; authenticated receives select/insert/update/delete. Each RLS policy requires auth.uid() = user_id.
+
+weekly_only_events (supabase/weekly_only_events.sql)
+- Purpose: events created directly in one Week; never queried by Month.
+- Columns: id, user_id, date, week_start, content, sort_order, created_at, updated_at.
+- Index: (user_id, week_start, date, sort_order).
+- Ownership, trigger, grants, and RLS follow the same authenticated-user pattern as calendar_events.
+
+weekly_tasks (supabase/weekly_tasks.sql)
+- Purpose: Week-only checklist records.
+- Columns: id, user_id, date, week_start, content, is_completed (default false), sort_order, created_at, updated_at.
+- Index: (user_id, week_start, date, sort_order).
+- Ownership, trigger, grants, and RLS follow the same authenticated-user pattern.
+
+planner_media (uncommitted supabase/planner_media.sql)
+- Purpose: per-date metadata for either an uploaded photo or a built-in sticker.
+- Columns: id, user_id, date, kind, storage_path, sticker_key, created_at.
+- Constraint: photo rows require storage_path and forbid sticker_key; sticker rows require sticker_key and forbid storage_path.
+- No geometry columns and no update operation/policy exist.
+- Index: (user_id, date, created_at).
+- Grants: authenticated select/insert/delete only; anon revoked. RLS restricts all operations to auth.uid() = user_id.
+- Current UI relationship: Month can load/upload/delete photos for a selected date and can render existing sticker rows. Week loads photo rows for its seven-day range and displays them read-only. Week does not create/delete media.
+
+Storage bucket: planner-photos (uncommitted supabase/planner_media.sql)
+- Private bucket, 8 MiB file limit.
+- Allowed MIME types: image/jpeg, image/png, image/webp, image/gif.
+- Object path convention: {auth user UUID}/{date}/photo-{timestamp}-{random suffix}.{extension}.
+- Authenticated select/insert/delete policies require the first storage folder to equal auth.uid().
+- The client creates one-hour signed URLs for display.
+- On metadata insert failure after upload, the client tries to remove the uploaded object. On metadata deletion, it deletes the row first and then tries to remove the object; storage cleanup failure is logged and may leave an orphan object.
+
+No weekly_event_states table or other planner table exists in the SQL directory. Do not infer that a TypeScript type implies deployed schema. SQL files are setup scripts, not a migration framework, and the repository cannot prove which scripts have been applied remotely.
+
+
+7. CRITICAL DATA SEMANTICS
+
+CalendarEvent
+- Canonical Month event.
+- Created, edited, and deleted in Month.
+- Appears in its Month date cell and in the corresponding Week by loading the same calendar_events row.
+- In Week it is rendered read-only with origin "calendar". Week must not copy it into weekly_only_events or offer Week-local edit/delete semantics.
+
+WeeklyOnlyEvent
+- Created directly in Week and scoped by both date and weekStart.
+- Appears only in Week.
+- Must not automatically appear in Month.
+- Can be edited/deleted only through the Week-only record path.
+
+WeeklyTask
+- Separate Week-only checklist record; never an event.
+- Scoped by date and weekStart.
+- Checkbox completion persists in is_completed.
+- Must not appear in Month and must not be merged into CalendarEvent.
+
+Composition/order
+- resolveWeekEvents combines in-memory CalendarEvent and WeeklyOnlyEvent values only for display, adds origin, and sorts by date/sortOrder with calendar origin before weekly origin on ties.
+- A new Week-only event receives the next sortOrder after all displayed events for that date, including canonical Month events.
+- Tasks have their own per-day sort order and collection.
+
+Overrides/hide/reset
+- Not implemented. WeeklyEventState exists only as an unused TypeScript type. There is no database table, state resolver, control, or persistence flow for override, hide, or reset.
+
+Media
+- Current media records belong to a date, not to a specific event/task.
+- Current working-tree behavior shows Month-added photos in Week as read-only photo stacks. This differs from the older proposed initial scope of Month/Focused Day only; actual code is authoritative.
+
+
+8. AUTHENTICATION
+
+lib/supabase/client.ts reads only these public environment names:
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+app/layout.tsx additionally reads NEXT_PUBLIC_SITE_URL for metadata. .env.example currently lists only the two Supabase variables.
+
+getSupabaseBrowserClient creates one cached browser client with autoRefreshToken: true, persistSession: true, and detectSessionInUrl: false. Each planner data operation calls ensureAnonymousPlannerUser. That function first calls auth.getSession(); if a user is already present, it returns the user ID. Otherwise it coalesces concurrent initialization through one module-level Promise around auth.signInAnonymously(), returns the new anonymous user's ID, and clears that Promise when complete.
+
+Although the user is "anonymous" from the product perspective, Supabase treats a signed-in anonymous user as authenticated. SQL revokes anon table access, grants authenticated access, and RLS matches auth.uid() to row.user_id. Client queries also explicitly filter by user_id. Session persistence means the browser retains ownership across visits; clearing/replacing browser storage may create a different anonymous user who cannot see the former user's rows. Anonymous sign-ins must be enabled in the Supabase project.
+
+No secret/service-role key belongs in this client-side app. Do not put API keys, access tokens, refresh tokens, passwords, or service-role material in documentation or source.
+
+
+9. PERSISTENCE FLOW
+
+Month event creation
+1. The user types in a day and commits by Enter, blur, Tab traversal, or switching writing targets.
+2. appendCalendarEvent trims content, ignores blank input, calculates the date's next sortOrder, and creates an optimistic CalendarEvent with a temporary string ID such as event-{timestamp}-{counter}.
+3. MonthPlanner appends a create mutation to a serialized in-memory queue and shows Saving.
+4. lib/planner-data/calendar-events.ts calls ensureAnonymousPlannerUser and INSERTs user_id/date/content/sort_order without the temporary id.
+5. Postgres creates the UUID. The returned row maps back to CalendarEvent (with textSize forced to medium).
+6. MonthPlanner replaces the temporary ID in current UI state, any active edit draft, and later queued update/delete operations.
+
+Month edits/deletes are optimistic and queued in order. Updates send date/content/sort_order and scope by id plus user_id. Deletes scope by id plus user_id. A mutation error stops the queue at the failed item, leaves optimistic state in place, displays "Couldn't save," and offers Retry. A load error offers Retry by reloading. There is no automatic rollback of a failed Month update/delete.
+
+Week-only event creation
+- submitNewEvent trims/rejects blank content through appendWeeklyOnlyEvent, creates an optimistic temporary ID, computes sortOrder after the day's combined displayed events, clears the input, and calls createWeeklyOnlyEvent.
+- The insert omits id, and success replaces the optimistic item with the returned UUID row.
+- Edit is optimistic after commit; delete is optimistic. Create/edit failures keep the optimistic/current edited value and offer Retry. Delete failure restores the deleted item. Only Week-only events have edit/delete controls in Week.
+
+Weekly tasks
+- Creation mirrors Week-only creation: temporary ID, trimmed content, per-day task sortOrder, isCompleted false, insert without id, replace with returned row.
+- Text edits optimistically call updateWeeklyTask.
+- Checkbox toggles optimistically invert isCompleted and call toggleWeeklyTask; failure rolls completion back and offers Retry.
+- Delete is optimistic; failure restores the task and offers Retry.
+
+Week save/error behavior
+- One runSave operation is allowed at a time; controls derive disabled/busy state while loading or saving.
+- Initial load uses Promise.allSettled for calendar events, Week-only events, tasks, and photos. Failure of any of the first three makes the Week load state an error and exposes Retry. Photo load failure is logged but deliberately excluded from the visible load-error state.
+- Save failures retain a closure in retryActionRef. A load retry increments loadVersion and reloads.
+
+Media
+- Photo upload validates JPG/PNG/WebP/GIF and <=8 MiB, uploads to planner-photos, inserts planner_media metadata, creates a signed preview URL, and appends only after success (not optimistic).
+- Media deletion optimistically removes the gallery card, deletes the metadata row, then attempts Storage cleanup; metadata failure restores the gallery item.
+- Sticker insert support exists in createPlannerSticker, but no component currently calls it.
+- Media-panel errors show a message but do not currently offer a dedicated Retry button; the user can repeat the action or reopen the panel.
+
+
+10. MONTH PLANNER
+
+- Navigation: previous/next month arrows, direct Month/Year selects (current year +/-10), and canonical /month/YYYY/MM routing. Invalid month routes return notFound; /month query parameters redirect after validation.
+- Grid: UTC-safe, Sunday-first, complete weeks only; therefore a month can render four, five, or six rows. Adjacent-month days are included and remain writable.
+- Events: click/tap a writing area to create; click an event to edit; Enter/blur commit; Escape cancels; delete button removes one event. Blank creates and blank edits are ignored by pure helpers.
+- Multiple events: supported independently with monotonically increasing per-date sortOrder. Deletion does not compact sortOrder.
+- Overflow: each cell renders at most three records. "N more..." opens FocusedDayOverlay, which renders all records and supports the same core mutations.
+- Focused day: modal-like overlay closes from its X, backdrop, or Escape when no draft is active. It is not a media canvas. The separate flower trigger on the cell opens DayMediaPanel for that date.
+- Keyboard behavior in the dirty working tree: Tab/Shift+Tab while creating/editing commits and moves to the adjacent visible calendar date, editing that date's first event or starting a new draft. This behavior is unit-uncovered at the component level.
+- Persistence: full visible-grid date range is loaded from Supabase. Optimistic queue semantics are described above.
+- Week row navigation: each row has a Week link using that row's Sunday. The shell's generic Week tab points to a computed week around the middle of the displayed month, not necessarily today's week.
+- Responsive behavior: over 700px the sheet is constrained to 100dvh and each calendar row flexes to share remaining height. Below 701px the sheet loses outer chrome, but the grid keeps min-width 880px and horizontally scrolls. It is not transformed into a mobile list/day view.
+- Known limitations: only three events are visible in-cell; media is a separate gallery; textSize is always effectively medium; no drag/reorder; no cross-device conflict handling; no E2E verification.
+
+
+11. WEEK PLANNER
+
+- Seven-day calculation: buildWeek accepts any valid ISO date, normalizes it to Sunday via UTC methods, and returns Sunday through Saturday. The route renders the normalized Sunday.
+- Navigation: previous/next Week arrows, Back to month using the Week's middle (Wednesday) month, and shared Month/Week tabs.
+- Month -> Week synchronization: Week loads calendar_events for exactly the selected seven-day range. These Month-derived items are displayed with a bullet and no edit/delete controls. They are not duplicated.
+- Week-only events: load by week_start; create under a date; edit content; delete. These have separate controls and never enter Month queries.
+- Weekly tasks: load by week_start; create/edit/delete per date; checkbox toggles persistent is_completed; completed content is muted/struck through.
+- Events/Tasks divider: every day column shares one percentage split (default 58/42, clamped 20/80). Dragging any separator updates the shared split. ArrowUp/ArrowDown move by 2%; Home/End select bounds. Value persists in localStorage under little-day-planner:week-divider:{weekStart}.
+- Photos in current dirty tree: Week also loads photo media for the date range. Each day can show up to three stacked thumbnails representing all available photos; clicking opens a portal-based gallery. Week has no photo add/delete control and ignores stickers.
+- Save states: Loading/Saving/Saved/errors appear in the Week tools. Core load or mutation errors offer Retry. Canonical events remain read-only even if the Week-only sections are interactive.
+- Responsive behavior: over 700px the Week grid fits the viewport vertically and event/task sections scroll internally. At all widths the grid has min-width 880px (seven columns of at least 126px) and the wrapper horizontally scrolls. Media viewers become bottom-sheet-like and one-column on small screens. lib/week-navigation.ts is not wired, so there is no actual mobile selected-day navigation despite its test name.
+
+
+12. CURRENT UI / VISUAL DIRECTION
+
+Intended direction:
+- Cute digital paper planner.
+- Warm cream/paper background and subtle shadow/borders.
+- Blush pink, sage green, warm muted red/orange, and soft blue accents.
+- Spacious writing areas and restrained controls.
+- Friendly, handmade/stationery feeling; photos and playful stickers can add personality.
+- Must not become a corporate SaaS dashboard, kanban/project-management board, or dense productivity application.
+
+Actually implemented styling:
+- CSS variables define paper, ink, muted ink, lines, Sunday red, Saturday blue, sage, blush, and serif/body font stacks.
+- The UI is a large cream sheet on a deeper paper background with subtle borders/shadows.
+- Month and Week share branding/navigation, centered serif headings, fine calendar lines, and compact inline writing.
+- Sundays and Saturdays have distinct tones; controls are mostly quiet until hover/focus.
+- Current dirty work replaces the old dot mark with a Michelle's Daily Planner raster logo and updates metadata/branding text.
+- Media dialogs use warm bottom-sheet/modal styling, photo-frame treatments, and custom SVG sticker art. However stickers cannot yet be selected/created through the UI, and photos are gallery cards/stacks rather than freely placed decorations.
+
+
+13. CURRENT RESPONSIVE REQUIREMENTS
+
+Primary desktop target: a 14-inch MacBook. Month and Week should feel like pages of the same planner at the same overall scale. The current >700px CSS explicitly fits both views into 100dvh using shared page padding, content padding, topbar height, heading spacing, title size, arrow size, and the same 880px grid minimum. Month rows divide available vertical space; Week columns use the available height and scroll their Events/Tasks interiors.
+
+Implemented small-screen behavior:
+- Removes outer page padding, border, radius, and shadow framing.
+- Reduces content/logo sizing and makes save state flow below tools.
+- Retains horizontally scrolling 880px Month/Week grids.
+- Changes media dialogs/viewer to full-width bottom sheets; media gallery becomes two columns and Week viewer one column.
+- Makes the hidden-on-hover media trigger visible/larger on coarse pointers.
+
+Future desired behavior, not implemented:
+- A truly phone-native Month/Week layout if horizontal scrolling is deemed insufficient.
+- The unused moveWeekDayIndex helper suggests an intended selected-day Week view, but there is no component state/control for it. Do not describe it as implemented.
+- Browser/device visual QA for the 14-inch MacBook target and phones.
+
+
+14. STAGE 6 MEDIA PLAN
+
+STATUS: PARTIAL WORKING-TREE IMPLEMENTATION, NOT COMPLETE.
+
+The earlier approximate plan proposed PlannerMedia with id, userId, date, kind, storagePath, positionX, positionY, width, height, and rotation; Storage for files; planner_media for metadata; and initial Month/Focused Day scope only.
+
+Actual current implementation differs:
+- Source model: id, date, kind, nullable storagePath, nullable stickerKey, optional previewUrl.
+- Database adds user_id ownership but has no position/size/rotation fields.
+- Files use private planner-photos Storage; metadata uses planner_media.
+- Month day cells open a separate per-date media panel. It is not embedded in FocusedDayOverlay.
+- Photos can be uploaded, viewed, and deleted in Month.
+- Week already loads/displays Month-added photos read-only, so current scope is not Month-only.
+- Stickers have six defined keys (flower, star, heart, rainbow, cherry, sparkles), SVG artwork, database insert support, tests, and rendering for existing rows, but there is no sticker picker/add action.
+- No media editing/update policy, drag placement, resize, rotation, or arbitrary canvas layout exists.
+- planner_media.sql and all media UI/data files are uncommitted, and remote schema application is unverified.
+
+Do not silently replace the actual working-tree model with the older approximate geometry plan. First establish the desired scope with the user, explain any SQL change before making it, and preserve currently working photo persistence.
+
+
+15. IMPORTANT BUGS / LESSONS FROM DEVELOPMENT
+
+- Never send temporary UI IDs to UUID database columns. All insert mappers intentionally omit id and reconcile the returned database UUID.
+- Local IDs use timestamp/counter or timestamp/random-string construction rather than crypto.randomUUID(). This avoids secure-origin problems on non-secure LAN development origins.
+- Month/Week synchronization must load the same canonical calendar_events rows, not duplicate them into Week data.
+- Do not restore hardcoded Week demo data. Week derives data from Supabase and pure helpers.
+- Keep WeeklyTask separate from CalendarEvent and WeeklyOnlyEvent.
+- Week-only events must never appear in Month.
+- The Month mutation queue is already nontrivial because it rewrites queued temporary IDs. Avoid expanding queue complexity without a demonstrated need.
+- A TypeScript model does not prove a feature exists: WeeklyEventState is unused, and PlannerMedia was only placeholder scaffolding at HEAD before current uncommitted work.
+- textSize and isBold were intentionally removed as user-facing/persistent features. Current source still has a medium-only textSize vestige; do not restore controls or schema columns.
+- The working tree is the only copy of the current media/branding/accessibility work. Do not discard or overwrite it while orienting.
+
+
+16. CURRENT KNOWN ISSUES
+
+1. Stage 6 sticker creation is not wired (nonblocking for core planner; blocking Stage 6 completion).
+   Symptom: the media panel says Photos & Stickers and can render/delete pre-existing sticker rows, but offers only Add photo. createPlannerSticker and sticker SVGs are unused by the UI.
+   Relevant files: components/planner/day-media-panel.tsx, components/planner/sticker-art.tsx, lib/planner-data/planner-media.ts, lib/planner-media.ts.
+
+2. Media deployment state is unknown (nonblocking for core records; potentially blocking media at runtime).
+   Symptom: planner_media.sql and media code are untracked, and the repository cannot confirm that the table/bucket/policies exist remotely. If SQL is unapplied, opening/uploading media will fail.
+   Relevant file: supabase/planner_media.sql. Explain required SQL and ask the user to apply/confirm it; do not expose credentials.
+
+3. Stage 6 scope/model differs from the earlier approximate plan (requires product decision, not an automatic fix).
+   Symptom: current code has fixed per-date galleries, no geometry, and read-only Week photo display. The older plan expected placement fields and Month/Focused Day only.
+   Relevant files: lib/planner-models.ts, components/planner/day-media-panel.tsx, components/planner/week-photo-strip.tsx, supabase/planner_media.sql.
+
+4. README is stale (nonblocking).
+   Symptom: it still says Week sync, interactive tasks, and media are not implemented, although Stages 4/5 are complete and media is partial. It is also ignored by the broad *.md gitignore rule even though a tracked README can still be modified.
+   Relevant file: README.md.
+
+5. textSize and WeeklyEventState are vestigial (nonblocking; avoid building on them).
+   Symptom: textSize remains in model/helpers/CSS/tests but is always mapped to medium and not persisted; WeeklyEventState has no implementation. This conflicts with the historical statement that textSize was removed, but accurately reflects current code.
+   Relevant files: lib/planner-models.ts, lib/month-events.ts, lib/planner-data/calendar-events.ts, components/planner/calendar-event-entry.tsx, tests/month-events.test.ts.
+
+6. Mobile Week selection helper is unused (nonblocking; Stage 7 incomplete).
+   Symptom: lib/week-navigation.ts and its test mention mobile selection, but application behavior remains a horizontally scrolling seven-column grid.
+   Relevant files: lib/week-navigation.ts, tests/week-navigation.test.ts, components/planner/week-planner.tsx, app/globals.css.
+
+7. Media errors have limited visibility/recovery (nonblocking).
+   Symptom: Week photo load failures are console-only and do not put Week into an error state; per-item signed URL failures are swallowed and render without a preview; media-panel action errors show text but no explicit Retry button. Signed URLs expire after one hour and are refreshed only on another load.
+   Relevant files: lib/planner-data/planner-media.ts, components/planner/week-planner.tsx, components/planner/day-media-panel.tsx.
+
+No failing automated check is known at handoff. No live-browser or live-Supabase runtime verification was performed in this handoff-only task.
+
+
+17. GIT STATE
+
+- Current branch: main.
+- HEAD: 101d186422199e50c55460cb8e4b67e01c0152b9.
+- HEAD decoration/message: 101d186 (HEAD -> main, origin/main) merge Month Week sync with weekly events and tasks.
+- origin/main at inspection: exactly the same hash; ahead/behind count was 0/0.
+- Working tree: DIRTY. Do not clean/reset it.
+
+Modified tracked files at final pre-document inspection:
+- README.md
+- app/globals.css
+- app/layout.tsx
+- components/planner/calendar-event-entry.tsx
+- components/planner/day-cell.tsx
+- components/planner/month-planner.tsx
+- components/planner/planner-shell.tsx
+- components/planner/week-planner.tsx
+- lib/planner-models.ts
+- next-env.d.ts (generated by Next build, now points to .next/types/routes.d.ts)
+
+Untracked files/directories before this handoff file was added:
+- components/planner/day-media-panel.tsx
+- components/planner/planner-logo.tsx
+- components/planner/sticker-art.tsx
+- components/planner/week-photo-strip.tsx
+- lib/planner-data/planner-media.ts
+- lib/planner-media.ts
+- lib/week-navigation.ts
+- public/branding/ (contains michelle-planner-logo.png)
+- supabase/planner_media.sql
+- tests/planner-media.test.ts
+- tests/week-navigation.test.ts
+
+AGENT_HANDOFF.txt is also untracked after this task. It may not appear in normal git status because .gitignore broadly ignores *.md only, not .txt.
+
+Recent commits (newest first):
+- 101d186 (2026-08-09) merge Month Week sync with weekly events and tasks
+- 5444a5d (2026-08-09) complete weekly events and tasks
+- f7b9663 (2026-08-09) checkpoint before add features to weekly tasks
+- b29df95 (2026-08-09) Month/Week synchronization
+- 8509385 (2026-08-09) update RM
+- baaacad (2026-08-09) complete stage 3 supabase persistence
+- 0d5c5cc (2026-08-09) complete stage 2 monthly planner interactions
+- 1696f79 (2026-08-08) remove project spec from git tracking
+- 4f0324e (2026-08-08) simplify stage 1 to conventional Next.js
+- b1de97a (2026-08-08) stage 1 before architecture cleanup
+
+No commit or push was performed for this handoff.
+
+
+18. TEST STATUS
+
+Commands run from the repository root on 2026-08-10:
+
+- npm run test: PASS. 31 tests, 31 passed, 0 failed/skipped/todo. Duration reported about 346 ms.
+- npm run lint: PASS. eslint . exited 0 with no output/errors.
+- npm run build: PASS. Next.js 16.2.6 Turbopack production build compiled, TypeScript completed, page data/static generation completed, and routes were emitted successfully. Build detected a local .env.local, but no values were inspected or recorded.
+- git diff --check: PASS. No whitespace errors.
+
+These results cover the dirty working tree, including uncommitted media files. They do not prove that Supabase SQL has been applied or that browser interactions work against a live project.
+
+
+19. FILES THE NEXT AGENT SHOULD READ FIRST
+
+1. AGENT_HANDOFF.txt
+2. package.json
+3. git status output, then lib/planner-models.ts
+4. components/planner/month-planner.tsx
+5. components/planner/week-planner.tsx
+6. lib/planner-data/calendar-events.ts
+7. lib/planner-data/weekly-only-events.ts
+8. lib/planner-data/weekly-tasks.ts
+9. lib/planner-data/planner-media.ts
+10. lib/supabase/client.ts
+11. supabase/calendar_events.sql
+12. supabase/weekly_only_events.sql
+13. supabase/weekly_tasks.sql
+14. supabase/planner_media.sql
+15. components/planner/day-cell.tsx
+16. components/planner/day-media-panel.tsx
+17. components/planner/week-photo-strip.tsx
+18. lib/month-events.ts, lib/weekly-only-events.ts, lib/weekly-tasks.ts, and lib/planner-media.ts
+19. app/globals.css
+20. all tests/*.test.ts
+21. README.md, while remembering its implementation-status paragraph is stale
+
+
+20. NEXT RECOMMENDED TASK
+
+Do not begin another stage without the user's instruction. The next logical development task is to finish and validate the existing partial Stage 6 work, not to start from the old abstract media plan.
+
+Before coding Stage 6 further, the next agent should:
+1. Preserve and review all dirty working-tree media/branding/accessibility changes.
+2. Confirm with the user whether the intended final scope is the current fixed per-date gallery plus read-only Week photos, or the older freely positioned Month/Focused-Day-only model with geometry. This choice materially affects schema and UI.
+3. Explain supabase/planner_media.sql and confirm whether the user has applied it. Do not assume remote state.
+4. If the current gallery direction is accepted, wire the existing sticker creation path into an accessible picker, then perform live Month photo/sticker create/load/delete checks and Week photo display checks.
+5. Reconcile documentation/tests with actual behavior, including the stale README and the unused mobile navigation helper.
+
+If the user instead asks for stabilization before Stage 6, prioritize live verification of the dirty media code and clarification of scope. Do not refactor core persistence merely because the code is complex; all automated checks currently pass.
+
+
+21. RULES FOR THE NEXT AGENT
+
+- Read AGENT_HANDOFF.txt first.
+- Inspect the actual repository before coding.
+- The repository is the source of truth.
+- Do not trust the handoff over actual code when they conflict.
+- Run git status before modifications.
+- Preserve the dirty working tree and identify user changes before editing overlapping files.
+- Do not perform destructive Git commands without user approval.
+- Do not push automatically.
+- Do not change Supabase schema without explaining required SQL first.
+- Do not expose secrets.
+- Do not restore textSize or isBold as user-facing or persisted features.
+- Do not mix WeeklyTask with CalendarEvent.
+- Do not make Week-only events appear in Month.
+- Preserve existing working persistence.
+- Avoid unrelated refactors.
+- Run test/lint/build after meaningful changes.
+- Stop and report when a requested stage is complete.
+
+
+FINAL ACCURACY NOTES
+
+- This file intentionally documents uncommitted files because they are part of the actual current project state.
+- Planned behavior is explicitly distinguished from current behavior, especially in Stage 6.
+- No environment values, keys, tokens, passwords, or remote URLs were copied into this document.
+- The most important discrepancies from the request's historical assumptions are: Stage 6 is already partially implemented in the dirty working tree; Week currently displays photos; textSize still exists as non-persistent vestigial source code; PlannerMedia's current shape does not contain geometry; WeeklyEventState has no implementation; and README status is stale.

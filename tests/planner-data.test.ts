@@ -24,7 +24,6 @@ const event: CalendarEvent = {
   id: row.id,
   date: row.date,
   content: row.content,
-  textSize: "medium",
   sortOrder: row.sort_order,
 };
 

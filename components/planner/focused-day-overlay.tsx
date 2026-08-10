@@ -86,7 +86,7 @@ export function FocusedDayOverlay({
           {isCreating ? (
             <input
               autoFocus
-              className="calendar-event-input focused-day-new-event calendar-event--medium"
+              className="calendar-event-input focused-day-new-event"
               aria-label={`New event for ${date}`}
               placeholder="Write a note…"
               value={activeDraft.content}

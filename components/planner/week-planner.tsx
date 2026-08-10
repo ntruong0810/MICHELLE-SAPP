@@ -14,6 +14,7 @@ import {
   weekTitle,
 } from "@/lib/calendar";
 import { loadCalendarEvents, weekDateRange } from "@/lib/planner-data/calendar-events";
+import { loadPlannerMediaRange } from "@/lib/planner-data/planner-media";
 import {
   createWeeklyOnlyEvent as persistCreatedWeeklyEvent,
   deleteWeeklyOnlyEvent as persistDeletedWeeklyEvent,
@@ -27,7 +28,8 @@ import {
   toggleWeeklyTask as persistToggledTask,
   updateWeeklyTask as persistUpdatedTask,
 } from "@/lib/planner-data/weekly-tasks";
-import type { CalendarEvent, WeeklyOnlyEvent, WeeklyTask } from "@/lib/planner-models";
+import { plannerMediaForDate } from "@/lib/planner-media";
+import type { CalendarEvent, PlannerMedia, WeeklyOnlyEvent, WeeklyTask } from "@/lib/planner-models";
 import {
   appendWeeklyOnlyEvent,
   deleteWeeklyOnlyEvent,
@@ -42,7 +44,9 @@ import {
   weeklyTasksForDate,
 } from "@/lib/weekly-tasks";
 import { PlannerShell } from "./planner-shell";
+import { PlannerDecorations } from "./planner-decorations";
 import { WeekOnlyEventEntry } from "./week-only-event-entry";
+import { WeekPhotoStrip } from "./week-photo-strip";
 import { WeeklyTaskEntry } from "./weekly-task-entry";
 
 type WeekPlannerProps = { weekStart: string };
@@ -63,6 +67,7 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
   const [dividerLoadedForWeek, setDividerLoadedForWeek] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [weekPhotos, setWeekPhotos] = useState<PlannerMedia[]>([]);
   const [weeklyEvents, setWeeklyEvents] = useState<WeeklyOnlyEvent[]>([]);
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [newEventDrafts, setNewEventDrafts] = useState<Record<string, string>>({});
@@ -134,6 +139,7 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
     queueMicrotask(() => {
       if (cancelled) return;
       setCalendarEvents([]);
+      setWeekPhotos([]);
       setWeeklyEvents([]);
       setTasks([]);
       setNewEventDrafts({});
@@ -148,7 +154,8 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
         loadCalendarEvents(range),
         loadWeeklyOnlyEvents(weekStart),
         loadWeeklyTasks(weekStart),
-      ]).then(([calendarResult, weeklyEventResult, taskResult]) => {
+        loadPlannerMediaRange(range, "photo"),
+      ]).then(([calendarResult, weeklyEventResult, taskResult, photoResult]) => {
         if (cancelled) return;
         if (calendarResult.status === "fulfilled") {
           setCalendarEvents(calendarResult.value);
@@ -157,6 +164,11 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
         }
         if (weeklyEventResult.status === "fulfilled") setWeeklyEvents(weeklyEventResult.value);
         if (taskResult.status === "fulfilled") setTasks(taskResult.value);
+        if (photoResult.status === "fulfilled") {
+          setWeekPhotos(photoResult.value);
+        } else {
+          console.error("[planner] week photo load failed", photoResult.reason);
+        }
         const failed = [calendarResult, weeklyEventResult, taskResult]
           .some((result) => result.status === "rejected");
         setErrorKind(failed ? "load" : null);
@@ -396,8 +408,10 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
           ) : null}
         </div>
       </div>
-      <div className="week-scroll">
-        <div className={`week-calendar${isResizing ? " week-calendar--resizing" : ""}`} aria-label={`Week of ${week.weekStart}`} aria-busy={saveState === "loading"} style={weekSizingStyle}>
+      <div className="week-calendar-stage">
+        <PlannerDecorations view="week" />
+        <div className="week-scroll">
+          <div className={`week-calendar${isResizing ? " week-calendar--resizing" : ""}`} aria-label={`Week of ${week.weekStart}`} aria-busy={saveState === "loading"} style={weekSizingStyle}>
           {week.days.map((day) => {
             const date = fromDateKey(day.date)!;
             const dayEvents = weekEventsForDate(displayedEvents, day.date);
@@ -427,6 +441,10 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
                         onDelete={() => deleteEvent(weeklyEvents.find((item) => item.id === event.id)!)}
                       />
                     ))}
+                    <WeekPhotoStrip
+                      date={day.date}
+                      photos={plannerMediaForDate(weekPhotos, day.date, "photo")}
+                    />
                     <form className="week-event-new" onSubmit={(submitEvent) => { submitEvent.preventDefault(); submitNewEvent(day.date); }}>
                       <span className="week-entry-mark" aria-hidden="true">•</span>
                       <input className="week-inline-input" aria-label={`New Week event for ${day.date}`} placeholder="Write an event…" value={newEventDrafts[day.date] ?? ""} onChange={(changeEvent) => setNewEventDrafts((current) => ({ ...current, [day.date]: changeEvent.target.value }))} onKeyDown={(keyEvent) => { if (keyEvent.key === "Escape") setNewEventDrafts((current) => ({ ...current, [day.date]: "" })); }} />
@@ -449,6 +467,7 @@ export function WeekPlanner({ weekStart }: WeekPlannerProps) {
               </section>
             );
           })}
+          </div>
         </div>
       </div>
     </PlannerShell>

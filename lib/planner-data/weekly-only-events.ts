@@ -1,8 +1,5 @@
 import type { WeeklyOnlyEvent } from "../planner-models.ts";
-import {
-  ensureAnonymousPlannerUser,
-  getSupabaseBrowserClient,
-} from "../supabase/client.ts";
+import { plannerConnection } from "./connection.ts";
 
 const WEEKLY_EVENT_COLUMNS = "id,user_id,date,week_start,content,sort_order,created_at,updated_at";
 
@@ -46,17 +43,6 @@ export function weeklyOnlyEventToInsert(
     content: event.content,
     sort_order: event.sortOrder,
   };
-}
-
-async function plannerConnection() {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new Error(
-      "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    );
-  }
-  const userId = await ensureAnonymousPlannerUser(client);
-  return { client, userId };
 }
 
 function reportEventError(operation: string, error: {

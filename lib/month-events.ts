@@ -1,15 +1,13 @@
-import type { CalendarEvent, TextSize } from "./planner-models.ts";
+import type { CalendarEvent } from "./planner-models.ts";
 
 type NewCalendarEvent = {
   id: string;
   date: string;
   content: string;
-  textSize?: TextSize;
 };
 
 type CalendarEventChanges = {
   content?: string;
-  textSize?: TextSize;
 };
 
 export function eventsForDate(events: CalendarEvent[], date: string): CalendarEvent[] {
@@ -36,7 +34,6 @@ export function appendCalendarEvent(
       id: input.id,
       date: input.date,
       content,
-      textSize: input.textSize ?? "medium",
       sortOrder,
     },
   ];
@@ -54,7 +51,6 @@ export function updateCalendarEvent(
     return {
       ...event,
       ...(content ? { content } : {}),
-      ...(changes.textSize ? { textSize: changes.textSize } : {}),
     };
   });
 }

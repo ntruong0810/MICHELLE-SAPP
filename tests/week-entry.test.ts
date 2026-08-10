@@ -16,7 +16,6 @@ import {
   appendWeeklyOnlyEvent,
   deleteWeeklyOnlyEvent,
   editWeeklyOnlyEvent,
-  replaceWeeklyOnlyEventId,
   resolveWeekEvents,
   weekEventsForDate,
 } from "../lib/weekly-only-events.ts";
@@ -24,7 +23,6 @@ import {
   appendWeeklyTask,
   deleteWeeklyTask,
   editWeeklyTask,
-  replaceWeeklyTaskId,
   weeklyTasksForDate,
   weeklyTasksForWeek,
 } from "../lib/weekly-tasks.ts";
@@ -32,7 +30,7 @@ import {
 const weekStart = "2026-08-16";
 
 function calendarEvent(id: string, content: string, sortOrder = 0): CalendarEvent {
-  return { id, date: "2026-08-20", content, sortOrder, textSize: "medium" };
+  return { id, date: "2026-08-20", content, sortOrder };
 }
 
 function weeklyEvent(id: string, content: string, sortOrder = 0): WeeklyOnlyEvent {
@@ -98,7 +96,7 @@ test("weekly-only events never enter Month event queries", () => {
   assert.deepEqual(eventsForDate(monthEvents, "2026-08-20").map((event) => event.content), ["Beach day"]);
 });
 
-test("reconciles weekly-only temporary IDs and database mappings without inserting id", () => {
+test("maps weekly-only database rows and builds inserts without an id", () => {
   const row: WeeklyOnlyEventRow = {
     id: "8f114674-3b2f-443b-9ec5-204f3cc98355",
     user_id: "ef8121d8-b3ea-4499-a7cc-3ba5d2a8bd16",
@@ -110,7 +108,7 @@ test("reconciles weekly-only temporary IDs and database mappings without inserti
     updated_at: "2026-08-09T12:00:00.000Z",
   };
   const persisted = weeklyOnlyEventFromRow(row);
-  assert.deepEqual(replaceWeeklyOnlyEventId([weeklyEvent("temporary", "Dentist", 1)], "temporary", persisted), [persisted]);
+  assert.deepEqual(persisted, weeklyEvent(row.id, "Dentist", 1));
   assert.deepEqual(weeklyOnlyEventToInsert(persisted, row.user_id), {
     user_id: row.user_id,
     date: row.date,
@@ -149,7 +147,7 @@ test("rejects empty tasks and preserves ordering while filtering by Week/date", 
   assert.deepEqual(weeklyTasksForDate(all, weekStart, "2026-08-20").map((item) => item.content), ["First", "Second"]);
 });
 
-test("reconciles task temporary IDs and database mappings without inserting id", () => {
+test("maps task database rows and builds inserts without an id", () => {
   const row: WeeklyTaskRow = {
     id: "1484ae48-26e8-4d61-9476-a104aa367f58",
     user_id: "ef8121d8-b3ea-4499-a7cc-3ba5d2a8bd16",
@@ -162,7 +160,7 @@ test("reconciles task temporary IDs and database mappings without inserting id",
     updated_at: "2026-08-09T12:00:00.000Z",
   };
   const persisted = weeklyTaskFromRow(row);
-  assert.deepEqual(replaceWeeklyTaskId([task("temporary", "Buy groceries")], "temporary", persisted), [persisted]);
+  assert.deepEqual(persisted, { ...task(row.id, "Buy groceries"), isCompleted: true });
   assert.deepEqual(weeklyTaskToInsert(persisted, row.user_id), {
     user_id: row.user_id,
     date: row.date,

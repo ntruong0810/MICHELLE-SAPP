@@ -57,11 +57,3 @@ export function editWeeklyTask(
 export function deleteWeeklyTask(tasks: WeeklyTask[], taskId: string): WeeklyTask[] {
   return tasks.filter((task) => task.id !== taskId);
 }
-
-export function replaceWeeklyTaskId(
-  tasks: WeeklyTask[],
-  temporaryId: string,
-  persistedTask: WeeklyTask,
-): WeeklyTask[] {
-  return tasks.map((task) => task.id === temporaryId ? persistedTask : task);
-}

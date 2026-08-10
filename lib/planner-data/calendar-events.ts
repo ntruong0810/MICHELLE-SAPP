@@ -1,9 +1,6 @@
 import { buildMonthWeeks, buildWeek } from "../calendar.ts";
 import type { CalendarEvent } from "../planner-models.ts";
-import {
-  ensureAnonymousPlannerUser,
-  getSupabaseBrowserClient,
-} from "../supabase/client.ts";
+import { plannerConnection } from "./connection.ts";
 
 const EVENT_COLUMNS = "id,user_id,date,content,sort_order,created_at,updated_at";
 
@@ -40,7 +37,6 @@ export function calendarEventFromRow(row: CalendarEventRow): CalendarEvent {
     id: row.id,
     date: row.date,
     content: row.content,
-    textSize: "medium",
     sortOrder: row.sort_order,
   };
 }
@@ -80,18 +76,6 @@ export function weekDateRange(weekStart: string): CalendarEventDateRange | null 
     startDate: week.days[0].date,
     endDate: week.days[6].date,
   };
-}
-
-async function plannerConnection() {
-  const client = getSupabaseBrowserClient();
-  if (!client) {
-    throw new Error(
-      "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    );
-  }
-
-  const userId = await ensureAnonymousPlannerUser(client);
-  return { client, userId };
 }
 
 export async function loadCalendarEvents(range: CalendarEventDateRange) {
